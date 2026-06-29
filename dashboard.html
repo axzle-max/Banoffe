@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Revenue Dashboard — Banoffee Café</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --cream:  #F9F4EC;
+  --gold:   #C9963A;
+  --toffee: #5C3317;
+  --banana: #E8C84A;
+  --dark:   #1A0F00;
+  --white:  #FFFDF8;
+  --muted:  #9C8A76;
+  --glass:  rgba(249,244,236,0.88);
+  --green:  #2E7D32;
+  --green-light: #E8F5E9;
+  --red:    #C62828;
+  --red-light: #FFEBEE;
+  --blue:   #1565C0;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--cream);
+  color: var(--dark);
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 300;
+  min-height: 100vh;
+}
+
+body::before {
+  content: '';
+  position: fixed; inset: 0; z-index: -1;
+  background: repeating-linear-gradient(
+    -45deg, transparent, transparent 40px,
+    rgba(201,150,58,0.04) 40px, rgba(201,150,58,0.04) 41px
+  );
+}
+
+/* NAV */
+nav {
+  position: sticky; top: 0; z-index: 100;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 clamp(1.2rem, 4vw, 3rem);
+  height: 64px;
+  background: var(--glass);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(201,150,58,0.2);
+  gap: 1rem;
+}
+.nav-logo {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.3rem; font-weight: 700;
+  color: var(--toffee); letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+.nav-logo span { color: var(--gold); }
+.nav-title {
+  font-size: 0.72rem; font-weight: 500; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--muted);
+  padding: 4px 12px; background: rgba(201,150,58,0.1);
+  border-radius: 20px; border: 1px solid rgba(201,150,58,0.25);
+  white-space: nowrap;
+}
+.nav-back {
+  font-size: 0.8rem; color: var(--gold); text-decoration: none;
+  font-weight: 500; letter-spacing: 0.04em;
+  padding: 8px 14px; border-radius: 8px;
+  border: 1.5px solid rgba(201,150,58,0.3);
+  transition: background .2s, border-color .2s;
+  white-space: nowrap;
+}
+.nav-back:hover { background: rgba(201,150,58,0.08); border-color: var(--gold); }
+
+/* MAIN */
+main {
+  max-width: 1300px;
+  margin: 0 auto;
+  padding: 2rem clamp(1rem, 3vw, 2.5rem) 5rem;
+}
+
+/* PAGE HEADER */
+.page-header {
+  margin-bottom: 1.8rem;
+  display: flex; align-items: flex-end; justify-content: space-between;
+  flex-wrap: wrap; gap: 1rem;
+}
+.page-eyebrow {
+  font-size: 0.68rem; font-weight: 500; letter-spacing: 0.15em;
+  text-transform: uppercase; color: var(--gold); margin-bottom: 0.35rem;
+}
+.page-title {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(1.6rem, 3.5vw, 2.3rem);
+  color: var(--toffee); font-weight: 700;
+}
+.btn-export {
+  background: transparent; color: var(--muted);
+  border: 1.5px solid rgba(0,0,0,0.12);
+  padding: 9px 18px; border-radius: 8px;
+  font-family: 'DM Sans', sans-serif; font-size: 0.82rem;
+  cursor: pointer; transition: border-color .2s, color .2s;
+  display: flex; align-items: center; gap: 6px;
+}
+.btn-export:hover { border-color: var(--muted); color: var(--dark); }
+
+/* KPI CARDS */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 1rem; margin-bottom: 1.6rem;
+}
+@media (max-width: 1000px) { .kpi-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 560px)  { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+
+.kpi-card {
+  background: var(--white);
+  border: 1px solid rgba(201,150,58,0.15);
+  border-radius: 14px; padding: 1.1rem 1.2rem;
+  position: relative; overflow: hidden;
+}
+.kpi-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+  border-radius: 14px 14px 0 0;
+}
+.kpi-card.revenue::before { background: var(--gold); }
+.kpi-card.cost::before    { background: #E65100; }
+.kpi-card.gross::before   { background: var(--blue); }
+.kpi-card.net::before     { background: var(--green); }
+.kpi-card.tax::before     { background: var(--muted); }
+.kpi-card.margin::before  { background: var(--toffee); }
+
+.kpi-label {
+  font-size: 0.64rem; font-weight: 500; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--muted); margin-bottom: 0.55rem;
+}
+.kpi-value {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.45rem; font-weight: 700; color: var(--dark);
+  line-height: 1.1; margin-bottom: 0.25rem;
+}
+.kpi-value.positive { color: var(--green); }
+.kpi-value.negative { color: var(--red); }
+.kpi-sub { font-size: 0.68rem; color: var(--muted); line-height: 1.4; }
+
+/* CHARTS */
+.charts-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.4rem; margin-bottom: 1.6rem;
+}
+@media (max-width: 780px) { .charts-grid { grid-template-columns: 1fr; } }
+
+.chart-card {
+  background: var(--white);
+  border: 1px solid rgba(201,150,58,0.15);
+  border-radius: 16px; padding: 1.4rem 1.4rem 1rem;
+}
+.chart-card-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 1rem; font-weight: 700; color: var(--toffee);
+  margin-bottom: 1rem;
+}
+.chart-wrap { position: relative; height: 270px; }
+
+/* FORM */
+.form-section {
+  background: var(--white);
+  border: 1px solid rgba(201,150,58,0.15);
+  border-radius: 16px; padding: 1.5rem 1.6rem 1.6rem;
+  margin-bottom: 1.4rem;
+}
+.form-section-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.05rem; font-weight: 700; color: var(--toffee);
+  margin-bottom: 1.2rem; display: flex; align-items: center; gap: 0.6rem;
+}
+.badge {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.62rem; font-weight: 500; letter-spacing: 0.1em;
+  text-transform: uppercase; background: rgba(201,150,58,0.12);
+  color: var(--gold); padding: 3px 9px; border-radius: 12px;
+}
+.form-row {
+  display: grid;
+  grid-template-columns: 1.6fr repeat(4, 1fr) auto;
+  gap: 0.8rem; align-items: end;
+}
+@media (max-width: 900px) {
+  .form-row { grid-template-columns: 1fr 1fr 1fr; }
+  .form-btn-cell { grid-column: 1 / -1; }
+}
+@media (max-width: 500px) {
+  .form-row { grid-template-columns: 1fr 1fr; }
+}
+.form-group {}
+.form-label {
+  display: block; font-size: 0.65rem; font-weight: 500;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--muted); margin-bottom: 0.4rem;
+}
+.form-input {
+  width: 100%; padding: 10px 12px;
+  border: 1.5px solid rgba(201,150,58,0.25); border-radius: 10px;
+  font-family: 'DM Sans', sans-serif; font-size: 0.9rem;
+  color: var(--dark); background: var(--cream);
+  outline: none; transition: border-color .2s;
+  -moz-appearance: textfield;
+}
+.form-input::-webkit-inner-spin-button,
+.form-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+.form-input:focus { border-color: var(--gold); }
+.form-input.num { text-align: right; }
+.btn-add {
+  background: var(--toffee); color: var(--cream);
+  border: none; border-radius: 10px;
+  padding: 0 20px; height: 42px;
+  font-family: 'DM Sans', sans-serif; font-size: 0.85rem; font-weight: 500;
+  cursor: pointer; white-space: nowrap;
+  display: flex; align-items: center; gap: 6px;
+  transition: background .2s, transform .1s;
+}
+.btn-add:hover { background: var(--gold); transform: translateY(-1px); }
+
+/* LIVE PREVIEW */
+.calc-preview {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.7rem;
+  margin-top: 1rem; padding: 1rem 1.2rem;
+  background: var(--cream); border-radius: 10px;
+  border: 1px dashed rgba(201,150,58,0.3);
+}
+.calc-item { text-align: center; }
+.calc-label {
+  font-size: 0.62rem; font-weight: 500; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--muted); margin-bottom: 0.3rem;
+}
+.calc-value {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.05rem; font-weight: 700; color: var(--dark);
+}
+.calc-value.pos { color: var(--green); }
+.calc-value.neg { color: var(--red); }
+
+/* TABLE */
+.table-section {
+  background: var(--white);
+  border: 1px solid rgba(201,150,58,0.15);
+  border-radius: 16px; overflow: hidden;
+}
+.table-header {
+  padding: 1.1rem 1.5rem;
+  border-bottom: 1px solid rgba(201,150,58,0.12);
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+}
+.table-title {
+  font-family: 'Playfair Display', serif;
+  font-size: 1rem; font-weight: 700; color: var(--toffee);
+}
+.table-count {
+  font-size: 0.72rem; color: var(--muted);
+  background: rgba(201,150,58,0.1); padding: 3px 10px; border-radius: 12px;
+}
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
+th {
+  text-align: right; padding: 0.7rem 1rem;
+  font-size: 0.62rem; font-weight: 500; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--muted);
+  background: rgba(249,244,236,0.6);
+  border-bottom: 1px solid rgba(201,150,58,0.1);
+  white-space: nowrap;
+}
+th:first-child { text-align: left; }
+td {
+  text-align: right; padding: 0.8rem 1rem;
+  border-bottom: 1px solid rgba(201,150,58,0.07);
+  white-space: nowrap;
+}
+td:first-child { text-align: left; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: rgba(249,244,236,0.6); }
+.td-week { font-weight: 500; color: var(--toffee); }
+.td-muted { color: var(--muted); }
+.td-pos { color: var(--green); font-weight: 500; }
+.td-neg { color: var(--red); font-weight: 500; }
+
+.week-input {
+  background: transparent; border: none; outline: none;
+  font-family: 'DM Sans', sans-serif; font-size: 0.84rem;
+  font-weight: 500; color: var(--toffee);
+  width: 100%; cursor: pointer;
+  padding: 2px 6px; border-radius: 6px;
+  transition: background .2s;
+}
+.week-input:hover  { background: rgba(201,150,58,0.1); }
+.week-input:focus  { background: rgba(201,150,58,0.15); cursor: text; outline: 1px solid rgba(201,150,58,0.4); }
+
+.btn-del {
+  background: none; border: 1px solid rgba(198,40,40,0.2);
+  color: var(--red); border-radius: 6px; padding: 3px 9px;
+  font-size: 0.7rem; cursor: pointer;
+  font-family: 'DM Sans', sans-serif; transition: background .18s, border-color .18s;
+}
+.btn-del:hover { background: var(--red-light); border-color: var(--red); }
+
+.totals-row td {
+  font-weight: 700;
+  background: rgba(201,150,58,0.05) !important;
+  border-top: 2px solid rgba(201,150,58,0.2) !important;
+  border-bottom: none !important;
+}
+.totals-row td:first-child {
+  font-family: 'Playfair Display', serif; color: var(--toffee);
+}
+
+/* EMPTY STATE */
+.empty-state {
+  text-align: center; padding: 4rem 1rem; color: var(--muted);
+}
+.empty-icon { font-size: 2.8rem; margin-bottom: 0.8rem; opacity: 0.45; }
+.empty-text { font-size: 0.9rem; line-height: 1.7; }
+
+/* TOAST */
+.toast {
+  position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 999;
+  background: var(--toffee); color: var(--cream);
+  padding: 12px 20px; border-radius: 10px;
+  font-size: 0.85rem; font-weight: 500;
+  box-shadow: 0 8px 30px rgba(92,51,23,0.25);
+  transform: translateY(20px); opacity: 0;
+  transition: transform .3s, opacity .3s;
+  pointer-events: none;
+}
+.toast.show { transform: translateY(0); opacity: 1; }
+
+/* NO-DATA CHART OVERLAY */
+.chart-no-data {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  color: var(--muted); font-size: 0.82rem; gap: 0.4rem;
+}
+.chart-no-data-icon { font-size: 1.8rem; opacity: 0.4; }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo">Bano<span>ffee</span></div>
+  <div class="nav-title">Revenue Dashboard</div>
+  <a class="nav-back" href="index.html">← Back to Café</a>
+</nav>
+
+<main>
+
+  <!-- PAGE HEADER -->
+  <div class="page-header">
+    <div>
+      <div class="page-eyebrow">Business Intelligence</div>
+      <h1 class="page-title">Weekly P&amp;L Dashboard</h1>
+    </div>
+    <button class="btn-export" onclick="exportCSV()">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Export CSV
+    </button>
+  </div>
+
+  <!-- KPI CARDS -->
+  <div class="kpi-grid" id="kpiGrid"></div>
+
+  <!-- CHARTS -->
+  <div class="charts-grid">
+    <div class="chart-card">
+      <div class="chart-card-title">Revenue · Cost · Net Profit</div>
+      <div class="chart-wrap" id="barWrap">
+        <canvas id="barChart"></canvas>
+        <div class="chart-no-data" id="barEmpty">
+          <div class="chart-no-data-icon">📊</div>
+          Add entries to see the chart
+        </div>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-card-title">Trend Over Time</div>
+      <div class="chart-wrap" id="lineWrap">
+        <canvas id="lineChart"></canvas>
+        <div class="chart-no-data" id="lineEmpty">
+          <div class="chart-no-data-icon">📈</div>
+          Add entries to see the trend
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ENTRY FORM -->
+  <div class="form-section">
+    <div class="form-section-title">
+      Add Weekly Entry
+      <span class="badge">Full P&amp;L</span>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Week / Period</label>
+        <input class="form-input" id="fWeek" type="text" placeholder="e.g. Week 1, Jun 1–7" autocomplete="off" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Revenue (฿)</label>
+        <input class="form-input num" id="fRevenue" type="number" min="0" step="1" placeholder="0" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Cost of Goods (฿)</label>
+        <input class="form-input num" id="fCogs" type="number" min="0" step="1" placeholder="0" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Operating Exp. (฿)</label>
+        <input class="form-input num" id="fOpex" type="number" min="0" step="1" placeholder="0" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Tax (฿)</label>
+        <input class="form-input num" id="fTax" type="number" min="0" step="1" placeholder="0" />
+      </div>
+      <div class="form-group form-btn-cell">
+        <button class="btn-add" onclick="addEntry()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Add
+        </button>
+      </div>
+    </div>
+
+    <!-- LIVE CALCULATED PREVIEW -->
+    <div class="calc-preview">
+      <div class="calc-item">
+        <div class="calc-label">Gross Profit</div>
+        <div class="calc-value pos" id="prevGross">฿0</div>
+      </div>
+      <div class="calc-item">
+        <div class="calc-label">Net Profit</div>
+        <div class="calc-value" id="prevNet">฿0</div>
+      </div>
+      <div class="calc-item">
+        <div class="calc-label">Total Cost</div>
+        <div class="calc-value" id="prevCost">฿0</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TABLE -->
+  <div class="table-section">
+    <div class="table-header">
+      <div class="table-title">Weekly Records</div>
+      <div class="table-count" id="tableCount">0 entries</div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th style="min-width:120px">Period</th>
+            <th>Revenue</th>
+            <th>COGS</th>
+            <th>Op. Exp.</th>
+            <th>Tax</th>
+            <th>Gross Profit</th>
+            <th>Net Profit</th>
+            <th>Margin</th>
+            <th style="width:50px"></th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const STORAGE_KEY = 'banoffee_revenue_v1';
+let entries = [];
+let barInst = null, lineInst = null;
+
+/* ── PERSISTENCE ── */
+function load() {
+  try { entries = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); }
+  catch { entries = []; }
+}
+function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(entries)); }
+
+/* ── MATH ── */
+function derived(e) {
+  const gross  = e.revenue - e.cogs;
+  const net    = gross - e.opex - e.tax;
+  const cost   = e.cogs + e.opex + e.tax;
+  const margin = e.revenue > 0 ? net / e.revenue * 100 : 0;
+  return { gross, net, cost, margin };
+}
+
+/* ── FORMAT ── */
+function baht(n) {
+  return '฿' + Math.round(n).toLocaleString('en');
+}
+function pct(n) { return n.toFixed(1) + '%'; }
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+
+/* ── LIVE PREVIEW ── */
+['fRevenue','fCogs','fOpex','fTax'].forEach(id =>
+  document.getElementById(id).addEventListener('input', livePreview)
+);
+function livePreview() {
+  const r = +document.getElementById('fRevenue').value || 0;
+  const c = +document.getElementById('fCogs').value    || 0;
+  const o = +document.getElementById('fOpex').value    || 0;
+  const t = +document.getElementById('fTax').value     || 0;
+  const { gross, net, cost } = derived({ revenue:r, cogs:c, opex:o, tax:t });
+
+  const gEl = document.getElementById('prevGross');
+  gEl.textContent = baht(gross);
+  gEl.className = 'calc-value ' + (gross >= 0 ? 'pos' : 'neg');
+
+  const nEl = document.getElementById('prevNet');
+  nEl.textContent = baht(net);
+  nEl.className = 'calc-value ' + (net >= 0 ? 'pos' : 'neg');
+
+  document.getElementById('prevCost').textContent = baht(cost);
+}
+
+/* ── ADD ── */
+function addEntry() {
+  const week = document.getElementById('fWeek').value.trim();
+  const rev  = +document.getElementById('fRevenue').value || 0;
+  const cogs = +document.getElementById('fCogs').value    || 0;
+  const opex = +document.getElementById('fOpex').value    || 0;
+  const tax  = +document.getElementById('fTax').value     || 0;
+
+  if (!week)   { toast('Enter a period name (e.g. "Week 1").'); document.getElementById('fWeek').focus(); return; }
+  if (rev <= 0){ toast('Revenue must be greater than 0.'); document.getElementById('fRevenue').focus(); return; }
+
+  entries.push({ id: Date.now(), week, revenue: rev, cogs, opex, tax });
+  save();
+  refresh();
+
+  document.getElementById('fWeek').value    = '';
+  document.getElementById('fRevenue').value = '';
+  document.getElementById('fCogs').value    = '';
+  document.getElementById('fOpex').value    = '';
+  document.getElementById('fTax').value     = '';
+  livePreview();
+  toast('Entry added: "' + week + '"');
+  document.getElementById('fWeek').focus();
+}
+
+/* ── DELETE ── */
+function deleteEntry(id) {
+  const e = entries.find(x => x.id === id);
+  if (!e || !confirm('Delete "' + e.week + '"?')) return;
+  entries = entries.filter(x => x.id !== id);
+  save(); refresh();
+  toast('Deleted "' + e.week + '"');
+}
+
+/* ── RENAME ── */
+function renameWeek(id, val) {
+  const e = entries.find(x => x.id === id);
+  if (e && val.trim()) { e.week = val.trim(); save(); updateCharts(); }
+}
+
+/* ── KPI ── */
+function renderKPI() {
+  const t = {
+    rev:  entries.reduce((s,e) => s + e.revenue, 0),
+    cogs: entries.reduce((s,e) => s + e.cogs, 0),
+    opex: entries.reduce((s,e) => s + e.opex, 0),
+    tax:  entries.reduce((s,e) => s + e.tax, 0),
+  };
+  t.cost  = t.cogs + t.opex + t.tax;
+  t.gross = t.rev - t.cogs;
+  t.net   = t.gross - t.opex - t.tax;
+  t.margin = t.rev > 0 ? t.net / t.rev * 100 : 0;
+  const wks = entries.length;
+
+  const gpCls = t.gross >= 0 ? 'positive' : 'negative';
+  const npCls = t.net   >= 0 ? 'positive' : 'negative';
+  const mgCls = t.margin >= 0 ? 'positive' : 'negative';
+
+  document.getElementById('kpiGrid').innerHTML = `
+    <div class="kpi-card revenue">
+      <div class="kpi-label">Total Revenue</div>
+      <div class="kpi-value">${baht(t.rev)}</div>
+      <div class="kpi-sub">${wks ? 'Avg ' + baht(t.rev / wks) + ' / week' : 'No data yet'}</div>
+    </div>
+    <div class="kpi-card cost">
+      <div class="kpi-label">Total Cost</div>
+      <div class="kpi-value">${baht(t.cost)}</div>
+      <div class="kpi-sub">COGS + OpEx + Tax</div>
+    </div>
+    <div class="kpi-card gross">
+      <div class="kpi-label">Gross Profit</div>
+      <div class="kpi-value ${gpCls}">${baht(t.gross)}</div>
+      <div class="kpi-sub">Revenue − COGS</div>
+    </div>
+    <div class="kpi-card net">
+      <div class="kpi-label">Net Profit</div>
+      <div class="kpi-value ${npCls}">${baht(t.net)}</div>
+      <div class="kpi-sub">After all deductions</div>
+    </div>
+    <div class="kpi-card tax">
+      <div class="kpi-label">Total Tax</div>
+      <div class="kpi-value">${baht(t.tax)}</div>
+      <div class="kpi-sub">Across ${wks} week${wks !== 1 ? 's' : ''}</div>
+    </div>
+    <div class="kpi-card margin">
+      <div class="kpi-label">Net Margin</div>
+      <div class="kpi-value ${mgCls}">${pct(t.margin)}</div>
+      <div class="kpi-sub">Net ÷ Revenue</div>
+    </div>`;
+}
+
+/* ── TABLE ── */
+function renderTable() {
+  const tbody = document.getElementById('tableBody');
+  document.getElementById('tableCount').textContent =
+    entries.length + ' ' + (entries.length === 1 ? 'entry' : 'entries');
+
+  if (!entries.length) {
+    tbody.innerHTML = `<tr><td colspan="9"><div class="empty-state">
+      <div class="empty-icon">📊</div>
+      <div class="empty-text">No entries yet.<br>Fill in the form above to add your first week.</div>
+    </div></td></tr>`;
+    return;
+  }
+
+  const rows = entries.map(e => {
+    const { gross, net, margin } = derived(e);
+    return `<tr>
+      <td class="td-week"><input class="week-input"
+        value="${esc(e.week)}"
+        title="Click to rename"
+        onblur="renameWeek(${e.id}, this.value)"
+        onkeydown="if(event.key==='Enter')this.blur()"
+      /></td>
+      <td>${baht(e.revenue)}</td>
+      <td class="td-muted">${baht(e.cogs)}</td>
+      <td class="td-muted">${baht(e.opex)}</td>
+      <td class="td-muted">${baht(e.tax)}</td>
+      <td class="${gross >= 0 ? 'td-pos' : 'td-neg'}">${baht(gross)}</td>
+      <td class="${net   >= 0 ? 'td-pos' : 'td-neg'}">${baht(net)}</td>
+      <td class="${margin >= 0 ? 'td-pos' : 'td-neg'}">${pct(margin)}</td>
+      <td><button class="btn-del" onclick="deleteEntry(${e.id})">✕</button></td>
+    </tr>`;
+  }).join('');
+
+  // totals
+  const T = entries.reduce((a,e) => {
+    a.rev  += e.revenue; a.cogs += e.cogs;
+    a.opex += e.opex;   a.tax  += e.tax;
+    return a;
+  }, { rev:0, cogs:0, opex:0, tax:0 });
+  const tGross  = T.rev - T.cogs;
+  const tNet    = tGross - T.opex - T.tax;
+  const tMargin = T.rev > 0 ? tNet / T.rev * 100 : 0;
+
+  tbody.innerHTML = rows + `
+    <tr class="totals-row">
+      <td>TOTAL</td>
+      <td>${baht(T.rev)}</td>
+      <td>${baht(T.cogs)}</td>
+      <td>${baht(T.opex)}</td>
+      <td>${baht(T.tax)}</td>
+      <td class="${tGross  >= 0 ? 'td-pos' : 'td-neg'}">${baht(tGross)}</td>
+      <td class="${tNet    >= 0 ? 'td-pos' : 'td-neg'}">${baht(tNet)}</td>
+      <td class="${tMargin >= 0 ? 'td-pos' : 'td-neg'}">${pct(tMargin)}</td>
+      <td></td>
+    </tr>`;
+}
+
+/* ── CHARTS ── */
+const PALETTE = {
+  gold:  { bg: 'rgba(201,150,58,.65)', line: '#C9963A' },
+  red:   { bg: 'rgba(230,81,0,.6)',    line: '#E65100' },
+  green: { bg: 'rgba(46,125,50,.6)',   line: '#2E7D32' },
+  blue:  { bg: 'rgba(21,101,192,.6)',  line: '#1565C0' },
+};
+
+const sharedScales = {
+  x: {
+    grid: { display: false },
+    ticks: { font: { family: 'DM Sans', size: 11 }, color: '#9C8A76' }
+  },
+  y: {
+    grid: { color: 'rgba(201,150,58,0.08)' },
+    ticks: {
+      font: { family: 'DM Sans', size: 11 }, color: '#9C8A76',
+      callback: v => '฿' + Number(v).toLocaleString('en')
+    }
+  }
+};
+
+const sharedPlugins = {
+  legend: {
+    position: 'bottom',
+    labels: { font: { family: 'DM Sans', size: 11 }, boxWidth: 12, padding: 14, color: '#9C8A76' }
+  },
+  tooltip: {
+    backgroundColor: '#FFFDF8', titleColor: '#1A0F00', bodyColor: '#5C4A36',
+    borderColor: 'rgba(201,150,58,.3)', borderWidth: 1,
+    titleFont: { family: 'DM Sans', weight: '500' },
+    bodyFont: { family: 'DM Sans' },
+    callbacks: { label: ctx => ' ' + ctx.dataset.label + ': ' + baht(ctx.parsed.y) }
+  }
+};
+
+function updateCharts() {
+  const hasData = entries.length > 0;
+  document.getElementById('barEmpty').style.display  = hasData ? 'none' : '';
+  document.getElementById('lineEmpty').style.display = hasData ? 'none' : '';
+  document.getElementById('barChart').style.display  = hasData ? '' : 'none';
+  document.getElementById('lineChart').style.display = hasData ? '' : 'none';
+
+  if (!hasData) {
+    if (barInst)  { barInst.destroy();  barInst  = null; }
+    if (lineInst) { lineInst.destroy(); lineInst = null; }
+    return;
+  }
+
+  const labels = entries.map(e => e.week);
+  const revenues = entries.map(e => e.revenue);
+  const costs    = entries.map(e => derived(e).cost);
+  const nets     = entries.map(e => derived(e).net);
+  const grosses  = entries.map(e => derived(e).gross);
+
+  /* BAR */
+  if (barInst) barInst.destroy();
+  barInst = new Chart(document.getElementById('barChart'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Revenue',    data: revenues, backgroundColor: PALETTE.gold.bg,  borderColor: PALETTE.gold.line,  borderWidth: 1.5, borderRadius: 5 },
+        { label: 'Total Cost', data: costs,    backgroundColor: PALETTE.red.bg,   borderColor: PALETTE.red.line,   borderWidth: 1.5, borderRadius: 5 },
+        { label: 'Net Profit', data: nets,     backgroundColor: PALETTE.green.bg, borderColor: PALETTE.green.line, borderWidth: 1.5, borderRadius: 5 },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: sharedPlugins,
+      scales: sharedScales
+    }
+  });
+
+  /* LINE */
+  if (lineInst) lineInst.destroy();
+  lineInst = new Chart(document.getElementById('lineChart'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Revenue',      data: revenues, borderColor: PALETTE.gold.line,  backgroundColor: 'rgba(201,150,58,.06)', fill: true, tension: 0.4, pointRadius: 4, pointHoverRadius: 6 },
+        { label: 'Gross Profit', data: grosses,  borderColor: PALETTE.blue.line,  backgroundColor: 'rgba(21,101,192,.06)', fill: true, tension: 0.4, pointRadius: 4, pointHoverRadius: 6 },
+        { label: 'Net Profit',   data: nets,     borderColor: PALETTE.green.line, backgroundColor: 'rgba(46,125,50,.06)',  fill: true, tension: 0.4, pointRadius: 4, pointHoverRadius: 6 },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: sharedPlugins,
+      scales: { ...sharedScales, y: { ...sharedScales.y, beginAtZero: false } }
+    }
+  });
+}
+
+/* ── EXPORT CSV ── */
+function exportCSV() {
+  if (!entries.length) { toast('No data to export.'); return; }
+  const hdr = ['Period','Revenue','COGS','Operating Expenses','Tax','Gross Profit','Net Profit','Net Margin %'];
+  const rows = entries.map(e => {
+    const { gross, net, margin } = derived(e);
+    return [e.week, e.revenue, e.cogs, e.opex, e.tax, gross, net, margin.toFixed(2)];
+  });
+  const csv = [hdr, ...rows].map(r => r.map(c => '"' + String(c).replace(/"/g, '""') + '"').join(',')).join('\n');
+  const a = Object.assign(document.createElement('a'), {
+    href: URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' })),
+    download: 'banoffee-revenue.csv'
+  });
+  a.click(); URL.revokeObjectURL(a.href);
+  toast('CSV downloaded.');
+}
+
+/* ── TOAST ── */
+let toastTmr;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(toastTmr);
+  toastTmr = setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+/* ── KEYBOARD ── */
+document.getElementById('fTax').addEventListener('keydown', e => {
+  if (e.key === 'Enter') addEntry();
+});
+
+/* ── BOOT ── */
+function refresh() { renderKPI(); renderTable(); updateCharts(); }
+load();
+refresh();
+</script>
+</body>
+</html>
